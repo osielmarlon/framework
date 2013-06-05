@@ -68,20 +68,26 @@ public class RequiredRoleInterceptor implements Serializable {
 	private static Logger logger;
 
 	/**
-	 * Gets the value property of {@code @RequiredRole}. Delegates to {@code SecurityContext} check role. If the user
-	 * has the required role it executes the mehtod, otherwise throws an exception. Returns what is returned from the
-	 * intercepted method. If the method's return type is {@code void} returns {@code null}.
+	 * Gets the value property of {@code @RequiredRole}. Delegates to
+	 * {@code SecurityContext} check role. If the user has the required role it
+	 * executes the mehtod, otherwise throws an exception. Returns what is
+	 * returned from the intercepted method. If the method's return type is
+	 * {@code void} returns {@code null}.
 	 * 
 	 * @param ic
-	 *            the {@code InvocationContext} in which the method is being called
-	 * @return what is returned from the intercepted method. If the method's return type is {@code void} returns
-	 *         {@code null}
+	 *            the {@code InvocationContext} in which the method is being
+	 *            called
+	 * @return what is returned from the intercepted method. If the method's
+	 *         return type is {@code void} returns {@code null}
 	 * @throws Exception
-	 *             if there is an error during the role check or during the method's processing
+	 *             if there is an error during the role check or during the
+	 *             method's processing
 	 */
 	@AroundInvoke
 	public Object manage(final InvocationContext ic) throws Exception {
 		List<String> roles = getRoles(ic);
+		
+		boolean requiredAll = getRequiredAll(ic);
 
 		if (getSecurityContext().isLoggedIn()) {
 			getLogger().info(
@@ -95,7 +101,17 @@ public class RequiredRoleInterceptor implements Serializable {
 			if (getSecurityContext().hasRole(role)) {
 				userRoles.add(role);
 			}
-		}
+			else{
+				if (requiredAll){
+				getLogger()
+				.error(getBundle().getString("does-not-have-role", getSecurityContext().getCurrentUser().getName(),
+						roles));
+
+		// AuthorizationException a = new AuthorizationException(null);
+		throw new AuthorizationException(getBundle().getString("does-not-have-role-ui", role));
+				}
+			}
+				}
 
 		if (userRoles.isEmpty()) {
 			getLogger()
@@ -116,7 +132,8 @@ public class RequiredRoleInterceptor implements Serializable {
 	 * Returns the value defined in {@code @RequiredRole} annotation.
 	 * 
 	 * @param ic
-	 *            the {@code InvocationContext} in which the method is being called
+	 *            the {@code InvocationContext} in which the method is being
+	 *            called
 	 * @return the value defined in {@code @RequiredRole} annotation
 	 */
 	private List<String> getRoles(InvocationContext ic) {
@@ -124,13 +141,30 @@ public class RequiredRoleInterceptor implements Serializable {
 
 		if (ic.getMethod().getAnnotation(RequiredRole.class) == null) {
 			if (ic.getTarget().getClass().getAnnotation(RequiredRole.class) != null) {
-				roles = ic.getTarget().getClass().getAnnotation(RequiredRole.class).value();
+				roles = ic.getTarget().getClass()
+						.getAnnotation(RequiredRole.class).value();
 			}
 		} else {
 			roles = ic.getMethod().getAnnotation(RequiredRole.class).value();
 		}
 
 		return Arrays.asList(roles);
+	}
+
+	private boolean getRequiredAll(InvocationContext ic) {
+		boolean requiredAll = false;
+
+		if (ic.getMethod().getAnnotation(RequiredRole.class) == null) {
+			if (ic.getTarget().getClass().getAnnotation(RequiredRole.class) != null) {
+				requiredAll = ic.getTarget().getClass()
+						.getAnnotation(RequiredRole.class).requiredAll();
+			}
+		} else {
+			requiredAll = ic.getMethod().getAnnotation(RequiredRole.class)
+					.requiredAll();
+		}
+
+		return requiredAll;
 	}
 
 	private SecurityContext getSecurityContext() {

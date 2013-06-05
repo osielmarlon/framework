@@ -61,4 +61,7 @@ public @interface RequiredRole {
 
 	@Nonbinding
 	String[] value();
+	
+	@Nonbinding
+	boolean requiredAll() default false;
 }
